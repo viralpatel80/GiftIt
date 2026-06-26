@@ -29,6 +29,9 @@ export async function POST(request: Request) {
   }
 
   // Service role client — bypasses RLS for cross-user writes
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: 'Server config error: missing service role key' }, { status: 500 })
+  }
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

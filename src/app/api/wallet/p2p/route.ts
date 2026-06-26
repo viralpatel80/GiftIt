@@ -76,11 +76,12 @@ export async function POST(request: Request) {
   if (debitErr) return NextResponse.json({ error: 'Transfer failed: ' + debitErr.message }, { status: 500 })
 
   // Credit recipient
-  const { error: creditErr } = await admin.from('wallet_transactions').insert({
+  const { error: creditErr, data: creditData } = await admin.from('wallet_transactions').insert({
     user_id: recipient.id, type: 'credit_p2p', amount,
     description: receiveNote
-  })
-  if (creditErr) return NextResponse.json({ error: 'Partial failure — debit succeeded but credit failed.' }, { status: 500 })
+  }).select()
+  console.log('CREDIT RESULT:', JSON.stringify({ creditErr, creditData, recipientId: recipient.id, amount }))
+  if (creditErr) return NextResponse.json({ error: 'Credit failed: ' + creditErr.message }, { status: 500 })
 
   return NextResponse.json({ success: true, recipient: { name: recipient.full_name, handle: recipient.gift_handle }, amount })
 }

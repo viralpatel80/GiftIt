@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #C9A84C;
+  --gold2: #E8C870;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: #F7F4F0; color: #1A1A1A; }
+
+.btn-gold {
+  @apply bg-[#C9A84C] text-white font-semibold rounded-lg px-5 py-2.5 text-sm transition-all hover:opacity-90;
+}
+.btn-outline {
+  @apply border border-[#E5E0D8] text-[#555] font-semibold rounded-lg px-5 py-2.5 text-sm transition-all hover:border-[#C9A84C];
+}
+.card {
+  @apply bg-white border border-[#E5E0D8] rounded-xl;
+}
+.input {
+  @apply w-full bg-white border border-[#E5E0D8] rounded-lg px-4 py-3 text-[#1A1A1A] text-sm placeholder-[#AAA] outline-none focus:border-[#C9A84C] transition-colors;
+}
+.label {
+  @apply block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2;
+}

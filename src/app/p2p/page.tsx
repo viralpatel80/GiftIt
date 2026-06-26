@@ -100,10 +100,10 @@ export default function P2PPage() {
             {/* Recipient */}
             <div>
               <label style={labelStyle}>Recipient @handle or GIFT-ID</label>
-              <input type="text" placeholder="@priya.kapoor or GIFT-1234-5678"
+              <input type="text" placeholder="@handle, email, or GIFT-1234-5678"
                 value={handle} onChange={e => setHandle(e.target.value)}
                 style={inputStyle} />
-              <p style={{ fontSize: '11px', color: '#AAA', marginTop: '6px' }}>Ask the person for their @handle from their dashboard</p>
+              <p style={{ fontSize: '11px', color: '#AAA', marginTop: '6px' }}>Use their @handle, email address, or GIFT-ID</p>
             </div>
 
             {/* Amount */}

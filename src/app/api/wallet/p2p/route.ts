@@ -25,12 +25,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  // Find recipient by handle or numeric ID
+  // Find recipient by handle, numeric ID, or email
   const handle = recipientHandle.replace(/^@/, '').toLowerCase()
+  const isEmail = recipientHandle.includes('@') && recipientHandle.includes('.')
   const { data: recipient } = await supabase
     .from('users')
     .select('id, full_name, gift_handle, gift_numeric_id')
-    .or(`gift_handle.eq.${handle},gift_numeric_id.eq.${recipientHandle.toUpperCase()}`)
+    .or(isEmail
+      ? `email.eq.${recipientHandle.toLowerCase()}`
+      : `gift_handle.eq.${handle},gift_numeric_id.eq.${recipientHandle.toUpperCase()}`
+    )
     .single()
 
   if (!recipient) return NextResponse.json({ error: 'User not found. Check the @handle or GIFT ID.' }, { status: 404 })

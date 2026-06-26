@@ -27,7 +27,7 @@ export default async function DashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '12px', color: '#AAA' }}>@{profile?.gift_handle}</span>
           <form action="/api/auth/signout" method="POST">
-            <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#AAA', fontSize: '12px', fontWeight: 600 }}>Sign out</button>
+            <button type="submit" style={{ background: '#FFF0F0', border: '1px solid #FFCCCC', cursor: 'pointer', color: '#CC3333', fontSize: '12px', fontWeight: 700, borderRadius: '7px', padding: '6px 14px' }}>Sign out</button>
           </form>
         </div>
       </nav>

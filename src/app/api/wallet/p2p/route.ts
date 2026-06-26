@@ -25,17 +25,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  // Find recipient by handle, numeric ID, or email
-  const handle = recipientHandle.replace(/^@/, '').toLowerCase()
+  // Find recipient by email, handle, or numeric ID
   const isEmail = recipientHandle.includes('@') && recipientHandle.includes('.')
-  const { data: recipient } = await supabase
-    .from('users')
-    .select('id, full_name, gift_handle, gift_numeric_id')
-    .or(isEmail
-      ? `email.eq.${recipientHandle.toLowerCase()}`
-      : `gift_handle.eq.${handle},gift_numeric_id.eq.${recipientHandle.toUpperCase()}`
-    )
-    .single()
+  const handle = recipientHandle.replace(/^@/, '').toLowerCase()
+
+  let recipient = null
+  if (isEmail) {
+    const { data } = await supabase.from('users').select('id, full_name, gift_handle, gift_numeric_id').eq('email', recipientHandle.toLowerCase()).single()
+    recipient = data
+  } else if (recipientHandle.toUpperCase().startsWith('GIFT-')) {
+    const { data } = await supabase.from('users').select('id, full_name, gift_handle, gift_numeric_id').eq('gift_numeric_id', recipientHandle.toUpperCase()).single()
+    recipient = data
+  } else {
+    const { data } = await supabase.from('users').select('id, full_name, gift_handle, gift_numeric_id').eq('gift_handle', handle).single()
+    recipient = data
+  }
 
   if (!recipient) return NextResponse.json({ error: 'User not found. Check the @handle or GIFT ID.' }, { status: 404 })
   if (recipient.id === user.id) return NextResponse.json({ error: 'You cannot send money to yourself.' }, { status: 400 })

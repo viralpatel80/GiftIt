@@ -120,6 +120,8 @@ export default function SignupPage() {
   async function verifyMobileOTP() {
     setLoading(true); setError('')
     const cleaned = mobilePhone.replace(/\D/g, '').slice(-10)
+
+    // 1. Verify WhatsApp OTP
     const verifyRes = await fetch('/api/auth/whatsapp-otp/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: cleaned, otp: mobileOtp }),
@@ -127,7 +129,7 @@ export default function SignupPage() {
     const verifyData = await verifyRes.json()
     if (!verifyRes.ok) { setError(verifyData.error); setLoading(false); return }
 
-    // Create Supabase session via magic link
+    // 2. Create/find user, get token hash
     const signupRes = await fetch('/api/auth/mobile-signup', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: cleaned }),
@@ -135,8 +137,31 @@ export default function SignupPage() {
     const signupData = await signupRes.json()
     if (!signupRes.ok) { setError(signupData.error); setLoading(false); return }
 
-    // Follow magic link → creates session → profile/complete or dashboard
-    window.location.href = signupData.actionLink
+    // 3. Set session directly via token_hash (no PKCE / redirect needed)
+    const { data, error: otpError } = await supabase.auth.verifyOtp({
+      token_hash: signupData.tokenHash,
+      type: 'magiclink',
+    })
+    if (otpError || !data.user) { setError(otpError?.message || 'Login failed'); setLoading(false); return }
+
+    // 4. New user: create profile + wallet, go to profile/complete
+    if (signupData.isNew) {
+      await supabase.from('users').insert({
+        id: data.user.id,
+        email: data.user.email,
+        phone: cleaned,
+        phone_verified: true,
+        gift_handle: 'user_' + data.user.id.substring(0, 8),
+        gift_numeric_id: 'GIFT-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000),
+      })
+      await supabase.from('wallet_transactions').insert({
+        user_id: data.user.id, type: 'credit_event', amount: 5000,
+        description: '🎉 Welcome to GiftIt! ₹5,000 gift credit added to your wallet',
+      })
+      router.push('/profile/complete?phone=' + cleaned)
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   // ── Styles ───────────────────────────────────────────────────

@@ -40,9 +40,13 @@ export async function POST(request: Request) {
     options: { redirectTo: `${origin}/auth/callback?phone_signup=true&phone=${phone}` },
   })
 
-  if (linkError || !linkData?.properties?.action_link) {
+  if (linkError || !linkData?.properties?.hashed_token) {
     return NextResponse.json({ error: 'Failed to generate login link' }, { status: 500 })
   }
 
-  return NextResponse.json({ actionLink: linkData.properties.action_link })
+  return NextResponse.json({
+    tokenHash: linkData.properties.hashed_token,
+    email: syntheticEmail,
+    isNew: !found,
+  })
 }

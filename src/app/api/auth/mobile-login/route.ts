@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   const { phone } = await request.json()
-  const origin = new URL(request.url).origin
 
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,16 +27,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No account found with this number. Please sign up.' }, { status: 404 })
   }
 
-  // Generate magic link for login
+  // Generate token hash (no redirect needed — client calls verifyOtp directly)
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'magiclink',
     email: authUser.email!,
-    options: { redirectTo: `${origin}/auth/callback` },
   })
 
-  if (linkError || !linkData?.properties?.action_link) {
+  if (linkError || !linkData?.properties?.hashed_token) {
     return NextResponse.json({ error: 'Failed to generate login link' }, { status: 500 })
   }
 
-  return NextResponse.json({ actionLink: linkData.properties.action_link })
+  return NextResponse.json({ tokenHash: linkData.properties.hashed_token })
 }

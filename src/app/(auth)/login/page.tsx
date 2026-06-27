@@ -71,6 +71,7 @@ export default function LoginPage() {
       setLoading(false); return
     }
 
+    // 2. Get token hash from server
     const loginRes = await fetch('/api/auth/mobile-login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: cleaned }),
@@ -78,7 +79,14 @@ export default function LoginPage() {
     const loginData = await loginRes.json()
     if (!loginRes.ok) { setError(loginData.error); setLoading(false); return }
 
-    window.location.href = loginData.actionLink
+    // 3. Set session directly via token_hash (no PKCE / redirect needed)
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      token_hash: loginData.tokenHash,
+      type: 'magiclink',
+    })
+    if (otpError) { setError(otpError.message); setLoading(false); return }
+
+    router.push('/dashboard')
   }
 
   // ── Styles ───────────────────────────────────────────────────

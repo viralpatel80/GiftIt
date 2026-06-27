@@ -106,9 +106,8 @@ export default function LoginPage() {
           <p className="text-sm" style={{ color: '#888' }}>Sign in to your account</p>
         </div>
 
-        {/* Tabs — always show on first step of each flow */}
-        {(emailStep === 'email' || mobileStep === 'phone') && (
-          <div style={{ display: 'flex', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '4px', marginBottom: '16px', gap: '4px' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '4px', marginBottom: '16px', gap: '4px' }}>
             {(['email', 'mobile'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setError('') }}
                 style={{
@@ -120,8 +119,7 @@ export default function LoginPage() {
                 {t === 'email' ? '✉️ Email' : '📱 Mobile'}
               </button>
             ))}
-          </div>
-        )}
+        </div>
 
         <div className="p-6 rounded-xl" style={{ background: '#fff', border: '1px solid #E5E0D8' }}>
 

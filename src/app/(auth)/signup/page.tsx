@@ -180,9 +180,8 @@ export default function SignupPage() {
           ))}
         </div>
 
-        {/* Tabs — only show on first step */}
-        {((tab === 'email' && emailStep === 'email') || (tab === 'mobile' && mobileStep === 'phone')) && (
-          <div style={{ display: 'flex', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '4px', marginBottom: '16px', gap: '4px' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '4px', marginBottom: '16px', gap: '4px' }}>
             {(['email', 'mobile'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setError('') }}
                 style={{
@@ -194,8 +193,7 @@ export default function SignupPage() {
                 {t === 'email' ? '✉️ Email' : '📱 Mobile'}
               </button>
             ))}
-          </div>
-        )}
+        </div>
 
         <div className="p-6 rounded-xl" style={{ background: '#fff', border: '1px solid #E5E0D8' }}>
 

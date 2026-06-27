@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 function ProfileCompleteForm() {
   const [name, setName] = useState('')
@@ -49,10 +50,10 @@ function ProfileCompleteForm() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#F7F4F0' }}>
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 mb-6" style={{ textDecoration: 'none' }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base" style={{ background: '#C9A84C' }}>🎁</div>
             <span className="text-lg font-black tracking-tight" style={{ color: '#1A1A1A' }}>GiftIt</span>
-          </div>
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight mb-2" style={{ color: '#1A1A1A' }}>One last step</h1>
           <p className="text-sm" style={{ color: '#888' }}>
             {phone ? 'Phone +91 ' + phone + ' verified' : 'Set up your GiftID'}

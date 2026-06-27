@@ -30,33 +30,44 @@ export default function CreateEventPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const inp = {
+    width: '100%', background: '#fff', border: '1px solid #E5E0D8',
+    borderRadius: '8px', padding: '11px 14px', fontSize: '14px',
+    color: '#1A1A1A', outline: 'none', boxSizing: 'border-box' as const,
+  }
+  const lbl = {
+    display: 'block', fontSize: '11px', fontWeight: 700 as const, color: '#888',
+    textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '8px'
+  }
+
   async function searchRecipient() {
     setSearching(true)
     const q = recipientSearch.trim()
     let query = supabase.from('users').select('id, full_name, gift_handle, gift_numeric_id')
     if (q.startsWith('@')) {
       query = query.eq('gift_handle', q.slice(1))
-    } else if (q.includes('@')) {
+    } else if (q.includes('@') && q.includes('.')) {
       query = query.eq('email', q)
     } else {
-      query = query.eq('phone', q.startsWith('+91') ? q : `+91${q}`)
+      query = query.eq('phone', q.replace(/\D/g, '').slice(-10))
     }
-    const { data } = await query.single()
+    const { data } = await query.maybeSingle()
     setRecipient(data || null)
+    if (!data) alert('No user found. Try @handle, email, or phone.')
     setSearching(false)
   }
 
   async function createEvent() {
+    if (!title.trim()) { setError('Please enter an event title'); return }
     setLoading(true); setError('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not signed in'); setLoading(false); return }
 
-    const recipientId = recipient ? recipient.id : user.id  // default: self event
-
     const { data, error: err } = await supabase.from('events').insert({
       creator_id: user.id,
-      recipient_id: recipientId,
-      type, title, description: description || null,
+      recipient_id: recipient ? recipient.id : user.id,
+      type, title: title.trim(),
+      description: description.trim() || null,
       target_amount: targetAmount ? parseFloat(targetAmount) : null,
       event_date: eventDate || null,
       is_surprise: isSurprise,
@@ -67,27 +78,31 @@ export default function CreateEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      <nav className="border-b border-[#1A1A1A] px-6 h-14 flex items-center gap-4 sticky top-0 bg-[#0A0A0A]/90 backdrop-blur z-10">
-        <Link href="/dashboard" className="text-[#555] hover:text-white text-sm">← Dashboard</Link>
-        <span className="text-[#2A2A2A]">|</span>
-        <span className="text-sm font-semibold">Create Event</span>
+    <div style={{ minHeight: '100vh', background: '#F7F4F0' }}>
+      {/* Nav */}
+      <nav style={{ borderBottom: '1px solid #E5E0D8', padding: '0 24px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '28px', height: '28px', background: '#C9A84C', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🎁</div>
+          <span style={{ fontWeight: 900, fontSize: '15px', color: '#1A1A1A' }}>GiftIt</span>
+        </div>
+        <Link href="/dashboard" style={{ fontSize: '13px', fontWeight: 600, color: '#C9A84C', textDecoration: 'none' }}>← Dashboard</Link>
       </nav>
 
-      <div className="max-w-lg mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-1">New event</h1>
-        <p className="text-sm text-[#555] mb-8">Set up a gift pool for any occasion</p>
+      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '32px 24px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#1A1A1A', marginBottom: '4px' }}>Create a Gift Event</h1>
+        <p style={{ fontSize: '14px', color: '#888', marginBottom: '28px' }}>Set up a gift pool — share the link with friends</p>
 
-        <div className="space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
           {/* Event type */}
           <div>
-            <label className="label">Occasion</label>
-            <div className="grid grid-cols-4 gap-2">
+            <label style={lbl}>Occasion</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
               {EVENT_TYPES.map(et => (
                 <button key={et.value} onClick={() => setType(et.value)}
-                  className={`card p-3 text-center transition-all ${type === et.value ? 'border-[#C9A84C]' : 'hover:border-[#333]'}`}>
-                  <div className="text-xl mb-1">{et.emoji}</div>
-                  <div className="text-[10px] text-[#888]">{et.label}</div>
+                  style={{ padding: '12px 8px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', border: '1.5px solid', background: type === et.value ? '#FFF8E7' : '#fff', borderColor: type === et.value ? '#C9A84C' : '#E5E0D8' }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{et.emoji}</div>
+                  <div style={{ fontSize: '10px', color: type === et.value ? '#C9A84C' : '#888', fontWeight: 600 }}>{et.label}</div>
                 </button>
               ))}
             </div>
@@ -95,76 +110,88 @@ export default function CreateEventPage() {
 
           {/* Title */}
           <div>
-            <label className="label">Event Title</label>
-            <input type="text" className="input" placeholder="Priya's 30th Birthday 🎂"
-              value={title} onChange={e => setTitle(e.target.value)} />
+            <label style={lbl}>Event Title <span style={{ color: '#e53e3e' }}>*</span></label>
+            <input type="text" placeholder="Priya's 30th Birthday 🎂" value={title}
+              onChange={e => setTitle(e.target.value)} style={inp} />
           </div>
 
           {/* Description */}
           <div>
-            <label className="label">Description <span className="text-[#444] font-normal normal-case">(optional)</span></label>
-            <textarea className="input resize-none h-20" placeholder="A message to gifters..."
-              value={description} onChange={e => setDescription(e.target.value)} />
+            <label style={lbl}>Description <span style={{ fontWeight: 400, textTransform: 'none', color: '#AAA' }}>(optional)</span></label>
+            <textarea placeholder="A message to gifters..." value={description}
+              onChange={e => setDescription(e.target.value)}
+              style={{ ...inp, height: '80px', resize: 'none' as const }} />
           </div>
 
           {/* Target + Date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label className="label">Target Amount <span className="text-[#444] font-normal normal-case">(optional)</span></label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">₹</span>
-                <input type="number" className="input pl-7" placeholder="25000"
-                  value={targetAmount} onChange={e => setTargetAmount(e.target.value)} />
+              <label style={lbl}>Target Amount <span style={{ fontWeight: 400, textTransform: 'none', color: '#AAA' }}>(optional)</span></label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#888' }}>₹</span>
+                <input type="number" placeholder="25000" value={targetAmount}
+                  onChange={e => setTargetAmount(e.target.value)}
+                  style={{ ...inp, paddingLeft: '28px' }} />
               </div>
             </div>
             <div>
-              <label className="label">Event Date <span className="text-[#444] font-normal normal-case">(optional)</span></label>
-              <input type="date" className="input" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+              <label style={lbl}>Event Date <span style={{ fontWeight: 400, textTransform: 'none', color: '#AAA' }}>(optional)</span></label>
+              <input type="date" value={eventDate}
+                onChange={e => setEventDate(e.target.value)} style={inp} />
             </div>
           </div>
 
           {/* Recipient */}
           <div>
-            <label className="label">For someone else? <span className="text-[#444] font-normal normal-case">(leave blank for yourself)</span></label>
-            <div className="flex gap-2">
-              <input type="text" className="input flex-1" placeholder="@handle, phone, or email"
-                value={recipientSearch} onChange={e => { setRecipientSearch(e.target.value); setRecipient(null) }} />
-              <button className="btn-outline px-4 py-2 text-sm flex-shrink-0" onClick={searchRecipient} disabled={searching || !recipientSearch}>
+            <label style={lbl}>For someone else? <span style={{ fontWeight: 400, textTransform: 'none', color: '#AAA' }}>(leave blank = for you)</span></label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input type="text" placeholder="@handle, email, or phone"
+                value={recipientSearch}
+                onChange={e => { setRecipientSearch(e.target.value); setRecipient(null) }}
+                style={{ ...inp, flex: 1 }} />
+              <button onClick={searchRecipient} disabled={searching || !recipientSearch}
+                style={{ background: recipientSearch ? '#1A1A1A' : '#E5E0D8', color: recipientSearch ? '#fff' : '#AAA', border: 'none', borderRadius: '8px', padding: '0 18px', fontSize: '13px', fontWeight: 600, cursor: recipientSearch ? 'pointer' : 'not-allowed', flexShrink: 0 }}>
                 {searching ? '...' : 'Find'}
               </button>
             </div>
             {recipient && (
-              <div className="mt-2 p-3 bg-[#111] border border-green-500/30 rounded-lg flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center text-black font-bold text-sm">
+              <div style={{ marginTop: '10px', padding: '12px', background: '#F0FFF4', border: '1px solid #9AE6B4', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#C9A84C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '14px', flexShrink: 0 }}>
                   {recipient.full_name?.[0]}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{recipient.full_name}</p>
-                  <p className="text-xs text-[#555]">@{recipient.gift_handle}</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{recipient.full_name}</p>
+                  <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>@{recipient.gift_handle}</p>
                 </div>
-                <span className="ml-auto text-xs text-green-400 font-semibold">✓ Found</span>
+                <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 700, color: '#38a169' }}>✓ Found</span>
               </div>
             )}
           </div>
 
           {/* Surprise toggle */}
-          <div className="flex items-center justify-between p-4 card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '14px 16px' }}>
             <div>
-              <p className="text-sm font-semibold">Surprise event 🤫</p>
-              <p className="text-xs text-[#555] mt-0.5">Recipient won't see contributions until you reveal</p>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#1A1A1A', margin: '0 0 2px' }}>Surprise event 🤫</p>
+              <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>Recipient won't see contributions until you reveal</p>
             </div>
             <button onClick={() => setIsSurprise(!isSurprise)}
-              className={`w-11 h-6 rounded-full transition-colors relative ${isSurprise ? 'bg-[#C9A84C]' : 'bg-[#2A2A2A]'}`}>
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isSurprise ? 'translate-x-6' : 'translate-x-1'}`}/>
+              style={{ width: '44px', height: '24px', borderRadius: '99px', background: isSurprise ? '#C9A84C' : '#E5E0D8', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+              <div style={{ position: 'absolute', top: '3px', left: isSurprise ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
             </button>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && (
+            <div style={{ background: '#FFF0F0', border: '1px solid #FFCCCC', borderRadius: '8px', padding: '12px', color: '#CC3333', fontSize: '13px' }}>
+              {error}
+            </div>
+          )}
 
-          <button className="btn-gold w-full py-3 text-base" onClick={createEvent}
-            disabled={loading || !title}>
-            {loading ? 'Creating...' : 'Create Event & Get Link →'}
+          {/* Submit */}
+          <button onClick={createEvent} disabled={loading || !title.trim()}
+            style={{ width: '100%', background: title.trim() ? '#C9A84C' : '#E5E0D8', color: title.trim() ? '#fff' : '#AAA', fontWeight: 700, border: 'none', borderRadius: '10px', padding: '16px', fontSize: '16px', cursor: title.trim() ? 'pointer' : 'not-allowed', marginTop: '8px' }}>
+            {loading ? 'Creating event...' : '🎁 Create Event & Get Link →'}
           </button>
+
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, LogOut } from 'lucide-react'
+import ProfileCompleteBanner from './ProfileCompleteBanner'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -33,6 +34,13 @@ export default async function DashboardPage() {
       </nav>
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Profile completion banner */}
+        <ProfileCompleteBanner
+          userId={user.id}
+          missingPhone={!profile?.phone || !profile?.phone_verified}
+          missingEmail={!profile?.email || profile?.email?.endsWith('@giftit.app')}
+        />
+
         {/* Greeting */}
         <div style={{ marginBottom: '28px' }}>
           <p style={{ fontSize: '13px', color: '#AAA', marginBottom: '4px' }}>Good day,</p>

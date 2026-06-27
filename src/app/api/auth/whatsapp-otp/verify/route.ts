@@ -13,28 +13,48 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data, error } = await admin
-    .from('phone_verifications')
-    .select('*')
-    .eq('phone', phone)
-    .eq('otp', otp)
-    .eq('verified', false)
-    .gt('expires_at', new Date().toISOString())
-    .single()
+  // Try full number first, then 10-digit fallback for existing Indian users
+  const candidates = [phone]
+  if (phone.startsWith('91') && phone.length === 12) {
+    candidates.push(phone.slice(2)) // try without country code
+  }
 
-  if (error || !data) {
+  let otpRecord: any = null
+  for (const candidate of candidates) {
+    const { data } = await admin
+      .from('phone_verifications')
+      .select('*')
+      .eq('phone', candidate)
+      .eq('otp', otp)
+      .eq('verified', false)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+    if (data) { otpRecord = data; break }
+  }
+
+  if (!otpRecord) {
     return NextResponse.json({ error: 'Invalid or expired code. Try again.' }, { status: 400 })
   }
 
-  // Mark verified
-  await admin.from('phone_verifications').update({ verified: true }).eq('id', data.id)
+  await admin.from('phone_verifications').update({ verified: true }).eq('id', otpRecord.id)
 
-  // Check if user already exists with this phone
-  const { data: existingUser } = await admin
-    .from('users')
-    .select('id, email')
-    .eq('phone', phone)
-    .single()
+  // Check if user already exists — try both formats
+  let existingUser: any = null
+  for (const candidate of candidates) {
+    const { data } = await admin
+      .from('users')
+      .select('id, email')
+      .eq('phone', candidate)
+      .maybeSingle()
+    if (data) {
+      existingUser = data
+      // Migrate stored number to full international format if it was 10-digit
+      if (candidate !== phone) {
+        await admin.from('users').update({ phone }).eq('id', data.id)
+      }
+      break
+    }
+  }
 
   return NextResponse.json({ success: true, isExistingUser: !!existingUser, userId: existingUser?.id })
 }

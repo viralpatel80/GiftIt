@@ -106,8 +106,8 @@ export default function LoginPage() {
           <p className="text-sm" style={{ color: '#888' }}>Sign in to your account</p>
         </div>
 
-        {/* Tabs */}
-        {((tab === 'email' && emailStep === 'email') || (tab === 'mobile' && mobileStep === 'phone')) && (
+        {/* Tabs — always show on first step of each flow */}
+        {(emailStep === 'email' || mobileStep === 'phone') && (
           <div style={{ display: 'flex', background: '#fff', border: '1px solid #E5E0D8', borderRadius: '10px', padding: '4px', marginBottom: '16px', gap: '4px' }}>
             {(['email', 'mobile'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setError('') }}

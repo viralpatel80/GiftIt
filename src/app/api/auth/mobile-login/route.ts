@@ -12,10 +12,25 @@ export async function POST(request: Request) {
   })
 
   // Find ALL users with this phone number
-  const { data: profiles } = await admin
+  // Also try 10-digit fallback for existing Indian users stored without country code
+  let { data: profiles } = await admin
     .from('users')
     .select('id, email, phone_verified')
     .eq('phone', phone)
+
+  if (!profiles?.length && phone.startsWith('91') && phone.length === 12) {
+    const { data: fallback } = await admin
+      .from('users')
+      .select('id, email, phone_verified')
+      .eq('phone', phone.slice(2))
+    if (fallback?.length) {
+      profiles = fallback
+      // Migrate: update stored number to full international format
+      for (const p of fallback) {
+        await admin.from('users').update({ phone }).eq('id', p.id)
+      }
+    }
+  }
 
   if (!profiles || profiles.length === 0) {
     return NextResponse.json({ error: 'No account found with this number. Please sign up.' }, { status: 404 })

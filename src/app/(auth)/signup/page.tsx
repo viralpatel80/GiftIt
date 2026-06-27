@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PhoneInput, { fullPhone } from '@/components/PhoneInput'
 
 type EmailStep = 'email' | 'otp' | 'profile' | 'phone' | 'phone_otp'
 type MobileStep = 'phone' | 'phone_otp' | 'profile' | 'email' | 'email_otp'
@@ -36,11 +37,13 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneDial, setPhoneDial] = useState('91')
   const [phoneOtp, setPhoneOtp] = useState('')
 
   // Mobile flow
   const [mobileStep, setMobileStep] = useState<MobileStep>('phone')
   const [mobilePhone, setMobilePhone] = useState('')
+  const [mobileDial, setMobileDial] = useState('91')
   const [mobileOtp, setMobileOtp] = useState('')
   const [mobileEmail, setMobileEmail] = useState('')
   const [mobileEmailOtp, setMobileEmailOtp] = useState('')
@@ -116,12 +119,12 @@ export default function SignupPage() {
 
   async function sendPhoneOTP() {
     setLoading(true); setError('')
-    const cleaned = phone.replace(/\D/g, '').slice(-10)
-    const exists = await checkExists('phone', cleaned)
+    const fp = fullPhone(phoneDial, phone)
+    const exists = await checkExists('phone', fp)
     if (exists) { setError('This number is already linked to another account.'); setLoading(false); return }
     const res = await fetch('/api/auth/whatsapp-otp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned }),
+      body: JSON.stringify({ phone: fp }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
@@ -130,16 +133,16 @@ export default function SignupPage() {
 
   async function verifyPhoneOTP() {
     setLoading(true); setError('')
-    const cleaned = phone.replace(/\D/g, '').slice(-10)
+    const fp = fullPhone(phoneDial, phone)
     const res = await fetch('/api/auth/whatsapp-otp/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned, otp: phoneOtp }),
+      body: JSON.stringify({ phone: fp, otp: phoneOtp }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('users').update({ phone: cleaned, phone_verified: true }).eq('id', user.id)
+      await supabase.from('users').update({ phone: fp, phone_verified: true }).eq('id', user.id)
       await supabase.from('wallet_transactions').insert({
         user_id: user.id, type: 'credit_event', amount: 5000,
         description: 'Welcome to GiftIt! Rs.5,000 gift credit added to your wallet',
@@ -159,12 +162,12 @@ export default function SignupPage() {
 
   async function sendMobileOTP() {
     setLoading(true); setError(''); setExistingUser(null)
-    const cleaned = mobilePhone.replace(/\D/g, '').slice(-10)
-    const exists = await checkExists('phone', cleaned)
+    const fp = fullPhone(mobileDial, mobilePhone)
+    const exists = await checkExists('phone', fp)
     if (exists) { setExistingUser('phone'); setLoading(false); return }
     const res = await fetch('/api/auth/whatsapp-otp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned }),
+      body: JSON.stringify({ phone: fp }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
@@ -173,10 +176,10 @@ export default function SignupPage() {
 
   async function verifyMobilePhoneOTP() {
     setLoading(true); setError('')
-    const cleaned = mobilePhone.replace(/\D/g, '').slice(-10)
+    const fp = fullPhone(mobileDial, mobilePhone)
     const res = await fetch('/api/auth/whatsapp-otp/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned, otp: mobileOtp }),
+      body: JSON.stringify({ phone: fp, otp: mobileOtp }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
@@ -196,10 +199,10 @@ export default function SignupPage() {
     setLoading(true); setError('')
     const { data, error } = await supabase.auth.verifyOtp({ email: mobileEmail, token: mobileEmailOtp, type: 'email' })
     if (error || !data.user) { setError(error?.message || 'Verification failed'); setLoading(false); return }
-    const cleaned = mobilePhone.replace(/\D/g, '').slice(-10)
+    const fp = fullPhone(mobileDial, mobilePhone)
     const { error: upsertErr } = await supabase.from('users').upsert({
       id: data.user.id, email: mobileEmail, full_name: name, gender,
-      phone: cleaned, phone_verified: true,
+      phone: fp, phone_verified: true,
       gift_handle: handle.toLowerCase().replace(/\s+/g, '.'),
       gift_numeric_id: giftId(),
     })
@@ -353,15 +356,12 @@ export default function SignupPage() {
               </div>
               <div>
                 <label style={lbl}>Mobile Number</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{ background: '#F7F4F0', border: '1px solid #E5E0D8', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#888', flexShrink: 0 }}>+91</div>
-                  <input type="tel" placeholder="9876543210" value={phone}
-                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    onKeyDown={e => e.key === 'Enter' && sendPhoneOTP()} style={inp} />
-                </div>
+                <PhoneInput value={phone} dialCode={phoneDial}
+                  onChange={(local, dial) => { setPhone(local); setPhoneDial(dial) }}
+                  onEnter={sendPhoneOTP} />
               </div>
               {error && <p style={{ color: '#e53e3e', fontSize: '12px', margin: 0 }}>{error}</p>}
-              <button onClick={sendPhoneOTP} disabled={loading || phone.length < 10} style={btn(loading || phone.length < 10)}>
+              <button onClick={sendPhoneOTP} disabled={loading || phone.length < 5} style={btn(loading || phone.length < 5)}>
                 {loading ? 'Sending...' : 'Send WhatsApp OTP →'}
               </button>
             </div>
@@ -372,7 +372,7 @@ export default function SignupPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={lbl}>WhatsApp Code</label>
-                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Sent to +91 {phone} via WhatsApp</p>
+                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Sent to +{phoneDial} {phone} via WhatsApp</p>
                 <input type="text" maxLength={6} placeholder="000000" value={phoneOtp}
                   onChange={e => setPhoneOtp(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && verifyPhoneOTP()}
@@ -391,12 +391,9 @@ export default function SignupPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={lbl}>Mobile Number</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{ background: '#F7F4F0', border: '1px solid #E5E0D8', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#888', flexShrink: 0 }}>+91</div>
-                  <input type="tel" placeholder="9876543210" value={mobilePhone}
-                    onChange={e => { setMobilePhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setExistingUser(null) }}
-                    onKeyDown={e => e.key === 'Enter' && sendMobileOTP()} style={inp} />
-                </div>
+                <PhoneInput value={mobilePhone} dialCode={mobileDial}
+                  onChange={(local, dial) => { setMobilePhone(local); setMobileDial(dial); setExistingUser(null) }}
+                  onEnter={sendMobileOTP} />
               </div>
               {existingUser === 'phone' && (
                 <div style={{ background: '#FFF8E7', border: '1px solid #F0D060', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#7A5C00' }}>
@@ -406,7 +403,7 @@ export default function SignupPage() {
               )}
               {error && <p style={{ color: '#e53e3e', fontSize: '12px', margin: 0 }}>{error}</p>}
               {existingUser !== 'phone' && (
-                <button onClick={sendMobileOTP} disabled={loading || mobilePhone.length < 10} style={btn(loading || mobilePhone.length < 10)}>
+                <button onClick={sendMobileOTP} disabled={loading || mobilePhone.length < 5} style={btn(loading || mobilePhone.length < 5)}>
                   {loading ? 'Checking...' : 'Send WhatsApp OTP →'}
                 </button>
               )}
@@ -418,7 +415,7 @@ export default function SignupPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={lbl}>WhatsApp Code</label>
-                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Sent to +91 {mobilePhone} via WhatsApp</p>
+                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Sent to +{mobileDial} {mobilePhone} via WhatsApp</p>
                 <input type="text" maxLength={6} placeholder="000000" value={mobileOtp}
                   onChange={e => setMobileOtp(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && verifyMobilePhoneOTP()}

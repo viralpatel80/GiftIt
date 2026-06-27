@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PhoneInput, { fullPhone } from '@/components/PhoneInput'
 
 type MobileStep = 'phone' | 'otp' | 'link-email' | 'link-email-otp' | 'merge-confirm'
 
@@ -16,6 +17,7 @@ export default function LoginPage() {
 
   // Mobile flow
   const [phone, setPhone] = useState('')
+  const [dialCode, setDialCode] = useState('91')
   const [phoneOtp, setPhoneOtp] = useState('')
   const [mobileStep, setMobileStep] = useState<MobileStep>('phone')
 
@@ -57,7 +59,7 @@ export default function LoginPage() {
     setLoading(true); setError('')
     const res = await fetch('/api/auth/whatsapp-otp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phone.replace(/\D/g, '').slice(-10) }),
+      body: JSON.stringify({ phone: fullPhone(dialCode, phone) }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
@@ -66,12 +68,12 @@ export default function LoginPage() {
 
   async function verifyMobileOTP() {
     setLoading(true); setError('')
-    const cleaned = phone.replace(/\D/g, '').slice(-10)
+    const fp = fullPhone(dialCode, phone)
 
     // 1. Verify WhatsApp OTP
     const verifyRes = await fetch('/api/auth/whatsapp-otp/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned, otp: phoneOtp }),
+      body: JSON.stringify({ phone: fp, otp: phoneOtp }),
     })
     const verifyData = await verifyRes.json()
     if (!verifyRes.ok) { setError(verifyData.error); setLoading(false); return }
@@ -83,7 +85,7 @@ export default function LoginPage() {
     // 2. Get magic link token for mobile user
     const loginRes = await fetch('/api/auth/mobile-login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned }),
+      body: JSON.stringify({ phone: fp }),
     })
     const loginData = await loginRes.json()
     if (!loginRes.ok) { setError(loginData.error); setLoading(false); return }
@@ -284,16 +286,12 @@ export default function LoginPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={lbl}>Mobile Number</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{ background: '#F7F4F0', border: '1px solid #E5E0D8', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#888', flexShrink: 0 }}>+91</div>
-                  <input type="tel" placeholder="9876543210" value={phone}
-                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    onKeyDown={e => e.key === 'Enter' && sendMobileOTP()}
-                    style={inputStyle} />
-                </div>
+                <PhoneInput value={phone} dialCode={dialCode}
+                  onChange={(local, dial) => { setPhone(local); setDialCode(dial) }}
+                  onEnter={sendMobileOTP} />
               </div>
               {error && <p style={{ color: '#e53e3e', fontSize: '12px' }}>{error}</p>}
-              <button onClick={sendMobileOTP} disabled={loading || phone.length < 10} style={btnStyle(loading || phone.length < 10)}>
+              <button onClick={sendMobileOTP} disabled={loading || phone.length < 5} style={btnStyle(loading || phone.length < 5)}>
                 {loading ? 'Sending...' : 'Send WhatsApp Code →'}
               </button>
             </div>

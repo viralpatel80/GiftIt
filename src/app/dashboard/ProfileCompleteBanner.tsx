@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import PhoneInput, { fullPhone } from '@/components/PhoneInput'
 
 interface Props {
   userId: string
@@ -14,6 +15,7 @@ export default function ProfileCompleteBanner({ userId, missingPhone, missingEma
 
   // Phone states
   const [phone, setPhone] = useState('')
+  const [dialCode, setDialCode] = useState('91')
   const [phoneOtp, setPhoneOtp] = useState('')
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input')
 
@@ -41,20 +43,20 @@ export default function ProfileCompleteBanner({ userId, missingPhone, missingEma
   // ── Phone handlers ──────────────────────────────────────────
   async function sendPhoneOTP() {
     setLoading(true); setError('')
-    const cleaned = phone.replace(/\D/g, '').slice(-10)
-    if (cleaned.length < 10) { setError('Enter a valid 10-digit number'); setLoading(false); return }
+    const fp = fullPhone(dialCode, phone)
+    if (fp.length < 7) { setError('Enter a valid phone number'); setLoading(false); return }
 
     // Check not already used
     const res = await fetch('/api/auth/check-exists', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned }),
+      body: JSON.stringify({ phone: fp }),
     })
     const check = await res.json()
     if (check.exists) { setError('This number is already linked to another account.'); setLoading(false); return }
 
     const otpRes = await fetch('/api/auth/whatsapp-otp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned }),
+      body: JSON.stringify({ phone: fp }),
     })
     const otpData = await otpRes.json()
     if (!otpRes.ok) { setError(otpData.error); setLoading(false); return }
@@ -63,15 +65,15 @@ export default function ProfileCompleteBanner({ userId, missingPhone, missingEma
 
   async function verifyPhoneOTP() {
     setLoading(true); setError('')
-    const cleaned = phone.replace(/\D/g, '').slice(-10)
+    const fp = fullPhone(dialCode, phone)
     const res = await fetch('/api/auth/whatsapp-otp/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned, otp: phoneOtp }),
+      body: JSON.stringify({ phone: fp, otp: phoneOtp }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setLoading(false); return }
 
-    await supabase.from('users').update({ phone: cleaned, phone_verified: true }).eq('id', userId)
+    await supabase.from('users').update({ phone: fp, phone_verified: true }).eq('id', userId)
     setSuccess('Phone verified!'); setPhoneDone(true); setLoading(false)
     setTimeout(() => setSuccess(''), 3000)
   }
@@ -120,13 +122,15 @@ export default function ProfileCompleteBanner({ userId, missingPhone, missingEma
           </div>
 
           {phoneStep === 'input' && (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ background: '#FFF8E7', border: '1px solid #D0B060', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#888', flexShrink: 0 }}>+91</div>
-              <input type="tel" placeholder="9876543210" value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                style={inp} />
-              <button onClick={sendPhoneOTP} disabled={loading || phone.length < 10}
-                style={{ background: phone.length >= 10 ? '#C9A84C' : '#E5E0D8', color: phone.length >= 10 ? '#fff' : '#AAA', fontWeight: 700, border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: phone.length >= 10 ? 'pointer' : 'not-allowed', fontSize: '13px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <PhoneInput value={phone} dialCode={dialCode}
+                  onChange={(local, dial) => { setPhone(local); setDialCode(dial) }}
+                  onEnter={sendPhoneOTP}
+                  inputStyle={{ background: '#FFF8E7', border: '1px solid #D0B060' }} />
+              </div>
+              <button onClick={sendPhoneOTP} disabled={loading || phone.length < 5}
+                style={{ background: phone.length >= 5 ? '#C9A84C' : '#E5E0D8', color: phone.length >= 5 ? '#fff' : '#AAA', fontWeight: 700, border: 'none', borderRadius: '8px', padding: '11px 16px', cursor: phone.length >= 5 ? 'pointer' : 'not-allowed', fontSize: '13px', flexShrink: 0 }}>
                 {loading ? '...' : 'Send OTP'}
               </button>
             </div>

@@ -38,6 +38,9 @@ export default async function EventPage({ params }: { params: { id: string } }) 
           <div className="w-7 h-7 bg-[#C9A84C] rounded-md flex items-center justify-center text-sm">🎁</div>
           <span className="font-black tracking-tight text-sm">GiftIt</span>
         </div>
+        <a href="/dashboard" style={{ fontSize: '13px', fontWeight: 600, color: '#C9A84C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          ← Dashboard
+        </a>
       </nav>
 
       <div className="max-w-lg mx-auto px-6 py-8">
